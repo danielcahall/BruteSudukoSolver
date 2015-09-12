@@ -10,6 +10,7 @@ import java.io.FileReader;
 public class Solver
 {
 	private int[][] puzzle;
+	private int[][] checker;
 	private int width;
 	private int height;
 	private int size;
@@ -25,6 +26,7 @@ public class Solver
 		BufferedReader reader = new BufferedReader(new FileReader(puzzleName));
 
 		String temp = reader.readLine();
+
 		if(temp.charAt(0) == 'c')
 		{
 			temp = reader.readLine();	
@@ -37,7 +39,6 @@ public class Solver
 		size = (height * width);
 
 		puzzle = new int[size][size];
-
 		int currentHeight = 0;
 
 		while(temp != null)
@@ -48,83 +49,127 @@ public class Solver
 			{						
 				puzzle[currentWidth][currentHeight]  = Integer.parseInt(input[currentWidth]);
 			}
+
 			temp = reader.readLine();
 			currentHeight++;
+		}
+
+		checker = new int[size][size];
+		for(int i = 0; i < size; i++)
+		{
+			for(int j = 0; j < size; j++)
+			{
+				checker[i][j] = puzzle[i][j];
+			}
 		}
 
 		reader.close();
 	}
 
 
-
-
-
-
-/*
- * 	The broken solver method.
- * 
- */
-	public void solve()
+	/**
+	 * 	The public solve function that is used to call the recursive method that does the real work. 
+	 * 
+	 * @return
+	 */
+	public boolean solve()
 	{
-		int one = 0;
-
-		while(one < size)
-		{
-			int two = 0;
-
-			while(two < size)
-			{
-				solveHelper(one, two);
-				two++;
-			}
-			one++;
-		}	
+		return solver(0, 0);
 	}
 
+
 	/**
-	 *  Doesn't work - unable to backtrack to fix mistakes.
+	 * 	This private method is the engine and main workhorse of the project. It will iterate in order through the 2D array representing the suduko puzzle. If it ever encounters
+	 *  an immutable value that is already in the puzzle it will skip that cell. When evaluating a cell it will attempt to plug every possible value into that location without 
+	 * 	violating the rules of the puzzle. If no possible values are found then we will backtrack to the previous cell increment that value to the next. 
 	 * 
 	 * @param x
 	 * @param y
+	 * @return
 	 */
-	private void solveHelper(int x, int y)
+	private boolean solver(int x, int y)
 	{
-		if(puzzle[x][y] != 0)
+		if(checker[x][y] != 0)
 		{
-			if(x < (size - 1))
-			{
-				solveHelper((x + 1), y);
-			}
-			else if(y < (size - 1))
-			{
-				solveHelper(0, (y + 1));
-			}
+			return next(x, y);
 		}
-		else
+
+		int check = (puzzle[x][y] + 1);
+
+		while(check <= size)
 		{
-			for(int i = 1; i <= size; i++)
+			if(rowChecker(x, check) && columnChecker(y, check) && boxChecker(x, y, check))
 			{
-				if(columnCheckNumber(y, i) && rowCheckNumber(x, i) && boxCheckNumber(x, y, i))
-				{
-					puzzle[x][y] = i;
-					i = size;
-				}
+				puzzle[x][y] = check;
+				return next(x, y);
 			}
+
+			check++;
 		}
+
+		return previous(x, y);
 	}
 
 
+	/**
+	 * 	This method will move the cell we are currently evaulating to the next location in the array. If we have reached the final location in array then we can
+	 * 	conclude that the puzzle has been properly solved and a true boolean will be returned.
+	 * 
+	 * @param x
+	 * @param y
+	 * @return
+	 */
+	private boolean next(int x, int y)
+	{	
+		if(x == (size - 1) && (y == (size - 1)))
+		{
+			System.out.println("Congratulations, your puzzle has been solved.");
+			return true;
+		}
+
+		if(x < (size - 1))
+		{
+			return solver((x + 1), y);
+		}
+
+		return solver(0, (y + 1));
+	}
 
 
+	/**
+	 * 	This method will move the cell we are currently evaluating back to the previous location. If we have already backtracked to the beginning of the array 
+	 * 	then we can conclude that the puzzle is unsolvable and a false boolean will be returned. If a previous location is immutable then we will simply skip over it 
+	 * 	and try to backtrack to the cell prior to that one. 
+	 * 
+	 * @param x
+	 * @param y
+	 * @return
+	 */
+	private boolean previous(int x, int y)
+	{
+		if((x == 0) && (y == 0))
+		{
+			System.out.println("Infinite Sadness! This puzzle is unsolvable.");
+			return false;
+		}
 
+		if(x > 0)
+		{
+			if(checker[(x - 1)][y] != 0)
+			{
+				return previous((x - 1), y);
+			}
 
+			return solver((x - 1), y);
+		}
 
+		if(checker[(size - 1)][(y - 1)] != 0)
+		{
+			return previous((size - 1), (y - 1));
+		}
 
-
-
-
-
-
+		return solver((size - 1), (y - 1));
+	}
 
 
 	/**
@@ -135,7 +180,7 @@ public class Solver
 	 * @param value
 	 * @return
 	 */
-	private boolean columnCheckNumber(int column, int value)
+	private boolean columnChecker(int column, int value)
 	{
 		for(int row = 0; row < size; row++)
 		{
@@ -148,6 +193,7 @@ public class Solver
 		return true;
 	}
 
+
 	/**
 	 * 	Accepts a value and a row space. Will return a boolean depending on whether or not the given value can be placed 
 	 * 	in the specified row without violating the rules of the suduko game.
@@ -156,7 +202,7 @@ public class Solver
 	 * @param value
 	 * @return
 	 */
-	private boolean rowCheckNumber(int row, int value)
+	private boolean rowChecker(int row, int value)
 	{
 		for(int column = 0; column < size; column++)
 		{
@@ -169,6 +215,7 @@ public class Solver
 		return true;
 	}
 
+
 	/**
 	 * 	Accepts a value and a sub-box space. Will return a boolean depending on whether or not the given value can be placed 
 	 * 	in the specified sub-box without violating the rules of the suduko game.
@@ -178,7 +225,7 @@ public class Solver
 	 * @param value
 	 * @return
 	 */
-	private boolean boxCheckNumber(int currentRow, int currentColumn, int value)
+	private boolean boxChecker(int currentRow, int currentColumn, int value)
 	{
 		int xLim = (width - 1);
 		while(currentRow > xLim)
@@ -206,6 +253,7 @@ public class Solver
 		return true ;
 	}
 
+
 	/*
 	 * 	Dummy method that prints the array to the console and splits it into easily identifiable sub-boxes.
 	 * 
@@ -231,6 +279,7 @@ public class Solver
 		}
 	}
 
+
 	/**
 	 * Dummy method that prints the puzzle array to the console.
 	 * 
@@ -246,5 +295,5 @@ public class Solver
 			}
 			System.out.println();
 		}
-	}
+	}		
 }
